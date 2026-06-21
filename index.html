@@ -21,12 +21,88 @@
     <h3>Arsenal vs Chelsea</h3>
     <p>Kickoff: 18:00</p>
 
-    <div class="locked">
-        🔒 Prediction locked - Pay to unlock
-    </div>
-
-    <button>Unlock for KES 50</button>
+    <div id="lockedBox" class="locked">
+    🔒 Prediction locked - Complete payment to unlock
 </div>
 
+    <button onclick="payNow()">Unlock for KES 50</button>
+</div>
+<script>
+const backendURL = "https://jaypredictions.onrender.com";
+
+async function payNow(){
+
+    // STEP 1: Ask phone number
+    const phone = prompt("Enter M-Pesa number (07XXXXXXXX)");
+
+    if(!phone){
+        alert("Phone number is required");
+        return;
+    }
+
+    // STEP 2: Show loading message
+    alert("Sending STK Push... Please wait");
+
+    try {
+
+        // STEP 3: Send request to backend
+        const res = await fetch(backendURL + "/stkpush", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ phone })
+        });
+
+        const data = await res.json();
+
+        if(data.success){
+
+            alert("STK Push sent to your phone. Complete payment.");
+
+            // STEP 4: Start checking payment
+            checkPayment(data.reference);
+
+        } else {
+            alert("Failed to initiate payment");
+        }
+
+    } catch(error){
+        alert("Error connecting to server");
+        console.log(error);
+    }
+}
+
+// STEP 5: Check payment status every 5 seconds
+function checkPayment(ref){
+
+    const interval = setInterval(async () => {
+
+        try {
+
+            const res = await fetch(backendURL + "/verify/" + ref);
+            const data = await res.json();
+
+            if(data.paid){
+
+                clearInterval(interval);
+
+                alert("Payment successful! Prediction unlocked.");
+
+                // STEP 6: Reveal prediction
+                document.getElementById("lockedBox").innerHTML = `
+                    <h3>Prediction: Home Win</h3>
+                    <p>Confidence: 87%</p>
+                    <p>Over 1.5 Goals recommended</p>
+                `;
+            }
+
+        } catch(err){
+            console.log("Checking payment...");
+        }
+
+    }, 5000);
+}
+</script>
 </body>
 </html>
